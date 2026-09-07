@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shift"
+version = "0.1.0"
+description = "Package implementation of the SHIFT (Spatial Hierarchy of Interactions and Feature Transitions) score, from the paper 'Integrating spatial descriptors quantifies changing cell interactions as colorectal neoplasia progresses' by Bull et al. (2026)."
+authors = [
+    { name="Joshua Bull", email="joshua.bull@maths.ox.ac.uk" }
+]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "scipy"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
