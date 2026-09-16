@@ -46,12 +46,13 @@ def compute_shift(
 
     if descriptor_columns is None:
         descriptor_columns = [col for col in df.columns if col != comparator_state_column and col not in (metadata_columns or [])]
-    X = df[descriptor_columns]
 
     if states_to_compare is not None:
         if len(states_to_compare) != 2:
             raise ValueError("`states_to_compare` must contain exactly two unique values.")
         df = df[df[comparator_state_column].isin(states_to_compare)]
+
+    X = df[descriptor_columns]
 
     if celltypes_of_interest is not None:
         # Filter descriptor columns to only include those involving the specified cell types
@@ -65,10 +66,11 @@ def compute_shift(
         celltypes_of_interest = np.unique([col.split('_')[0].split('-')[0] for col in descriptor_columns] + [col.split('_')[0].split('-')[1] for col in descriptor_columns])
 
     states = df[comparator_state_column]
-    unique_states = np.unique(states)
+    unique_states = states.dropna().unique()
     assert len(unique_states) == 2, f"Expected exactly two unique values in column '{comparator_state_column}', got {len(unique_states)}. If necessary, use the states_to_compare argument to specify which two states to compare."
 
     # Get all p values
+    print(f"State 1: {unique_states[0]}, State 2: {unique_states[1]}")
     state_1_mask = df[comparator_state_column] == unique_states[0]
     state_2_mask = df[comparator_state_column] == unique_states[1]
 
@@ -115,7 +117,7 @@ def _getPvals(X, state_1_mask, state_2_mask, stat):
     celltype1, celltype2 = stat.split('_')[0].split('-')
     state_1_vals = np.array(X[state_1_mask][stat])
     state_2_vals = np.array(X[state_2_mask][stat])
-    U, p = mannwhitneyu(x=state_1_vals, y=state_2_vals)
+    U, p = mannwhitneyu(x=state_1_vals, y=state_2_vals, nan_policy='omit')
     dataframe_row = {'ct1':celltype1,'ct2':celltype2,'Statistic':stat,'U':U,'pvalue':p,'n_state1_ROIs':len(state_1_vals), 'n_state2_ROIs':len(state_2_vals),'median_state1':np.median(state_1_vals), 'median_state2':np.median(state_2_vals)}
     return dataframe_row
 

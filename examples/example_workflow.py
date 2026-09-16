@@ -67,11 +67,18 @@ df = pd.concat(rows, ignore_index=True)
 df = df[["name", "State"] + [c for c in df.columns if c not in ("name", "State")]]
 
 # Optional - save/load if you want to calculate SHIFT in a subsequent workflow
-# df.to_csv('./Example_Statistics_Dataframe.csv', index=False)
-# df = pd.read_csv('./Example_Statistics_Dataframe.csv')
+# df.to_csv('./Example_Statistics_Dataframe_SHIFT.csv', index=False)
+# df = pd.read_csv('./Example_Statistics_Dataframe_SHIFT.csv')
 #%% CALCULATE SHIFT SCORE
 SHIFT, pvals = shift.compute_shift(df, comparator_state_column="State", metadata_columns=["name"], return_component_pvalues=True)
 
-
+shift.visualise_shift_matrix(
+    SHIFT,
+    significance_threshold=0.05,
+    figsize=(12,8),
+    cmap="RdBu_r",
+    vmax=None,
+    ax=None,
+)
 
 

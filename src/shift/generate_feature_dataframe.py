@@ -9,7 +9,7 @@ DEFAULT_STATISTICS = [
     "cross PCF"
 ]
 
-def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_cells_required=20, args_for_statistics=None):
+def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_cells_required=20, args_for_statistics=None, verbose=False):
     """
     Calculate statistics for a given domain and set of cell pairs.
 
@@ -32,6 +32,9 @@ def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_ce
 
     args_for_statistics : dict, optional
         Additional arguments for specific statistics. For example, for "persistent homology", this could include 'threshold_radius' to specify the radius of a loop for nLoops in the Vietoris-Rips filtration.
+
+    verbose : bool
+        If True, print progress messages during computation. Default is False.
 
     Returns
     -------
@@ -61,11 +64,17 @@ def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_ce
     cell_pop = ms.query.query(domain, ('label',cell_label_name),'is not',None)
     counts, cts = ms.summary_statistics.label_counts(domain, cell_label_name, normalised=False)
     if "counts" in statistics:
+        if verbose:
+            print('Calculating counts...')
         for i, celltype in enumerate(cts):
             results[f"{celltype}-None_Summaries_Count"] = counts[i]
 
     if "persistent homology" in statistics:
+        if verbose:
+            print('Calculating persistent homology...')
         for i, celltype in enumerate(cts):
+            if verbose:
+                print('Calculating persistent homology: {}...'.format(celltype))
             if float(counts[i]) > min_cells_required:
                 # Standard PH on this point population alone
                 TDA_dict = ms.topology.vietoris_rips_filtration(domain,population=(cell_label_name,celltype))
@@ -78,6 +87,8 @@ def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_ce
 
     if "quadrat correlation matrix" in statistics:
         side_length = args_for_statistics.get('quadrat_correlation_matrix', {}).get('side_length', 100)
+        if verbose:
+            print('Calculating quadrat correlation matrix...')
         SES, A, cats = ms.region_based.quadrat_correlation_matrix(domain,cell_label_name,population=cell_pop, region_kwargs={'side_length':side_length},low_observation_bound=min_cells_required)
         for i, cat_i in enumerate(cats):
             for j, cat_j in enumerate(cats):
@@ -85,16 +96,20 @@ def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_ce
                     results[f'{cat_i}-{cat_j}_QCM_SES'] = SES[i,j]
 
     if "wasserstein distance" in statistics:
-        for i, cat_i in enumerate(cats):
-            for j, cat_j in enumerate(cats):
+        for i, cat_i in enumerate(cts):
+            for j, cat_j in enumerate(cts):
                 if i != j:
                     w = ms.distribution.sliced_wasserstein_distance(domain, (cell_label_name, cat_i), (cell_label_name, cat_j))
+                    if verbose:
+                        print('Calculating Wasserstein distance: {}...'.format(f'{cat_i}-{cat_j}'))
                     results[f'{cat_i}-{cat_j}_Wasserstein_WassersteinDistance'] = w
 
     if "cross PCF" in statistics:
-        for i, cat_i in enumerate(cats):
-            for j, cat_j in enumerate(cats):
+        for i, cat_i in enumerate(cts):
+            for j, cat_j in enumerate(cts):
                 if float(counts[i]) > min_cells_required and float(counts[j]) > min_cells_required:
+                    if verbose:
+                        print('Calculating cross PCF: {}...'.format(f'{cat_i}-{cat_j}'))
                     max_R = args_for_statistics.get('cross PCF', {}).get('max_R', 150)
                     annulus_step = args_for_statistics.get('cross PCF', {}).get('annulus_step', 5)
                     annulus_width = args_for_statistics.get('cross PCF', {}).get('annulus_width', 10)
@@ -117,6 +132,8 @@ def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_ce
             if float(counts[i]) <= min_cells_required:
                 continue
             for j, cat_j in enumerate(cts):
+                if verbose:
+                    print('Calculating topographical correlation map level set filtration: {}...'.format(f'{cat_i}-{cat_j}'))
                 pop_b = ms.query.query(domain, ('label',cell_label_name),'is',cat_j)
                 if float(counts[j]) <= min_cells_required:
                     continue
@@ -131,7 +148,8 @@ def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_ce
                     results[f'{cat_i}-{cat_j}_TCM-LS_{statname}'] = vec[j]
 
     if "adjacency permutation test" in statistics:
-
+        if verbose:
+            print('Calculating adjacency permutation test...')
         ms.networks.generate_network(domain, 'network_name_temp', objects_as_nodes=cell_pop, **args_for_statistics.get('adjacency_permutation_test', {}).get('generate_network', {}))
         SES, A, cats = ms.networks.adjacency_permutation_test(domain, 'network_name_temp', cell_label_name, population=cell_pop)
         for i, cat_i in enumerate(cats):
@@ -139,6 +157,8 @@ def generate_feature_dataframe(domain, cell_label_name,  statistics=None, min_ce
                 results[f'{cat_i}-{cat_j}_APT_SES'] = SES
 
     if "morisita horn index" in statistics:
+        if verbose:
+            print('Calculating morisita horn index...')
         SES, A, cats = ms.region_based.morisita_horn_index(domain, cell_label_name, region_kwargs={'side_length':200})
         for i, cat_i in enumerate(cats):
             for j, cat_j in enumerate(cats):
